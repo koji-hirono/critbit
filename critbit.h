@@ -45,6 +45,5 @@ extern void critbit_remove(Critbit *, const CritbitPos *);
 extern int critbit_it_init(CritbitIt *, Critbit *, int, int);
 extern void critbit_it_destroy(CritbitIt *);
 extern void *critbit_next(CritbitIt *);
-extern void *critbit_pop(CritbitIt *);
 
 #endif /* !CRITBIT_H__ */

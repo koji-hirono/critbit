@@ -139,7 +139,7 @@ data_find(Critbit *tree, const void *key, int keybits, CritbitPos *pos)
 		if (v == 0 && critbit_isexnode(*n)) {
 			int nkeybits;
 			key_get(&nkeybits, *n);
-			if (nkeybits != keybits) {
+			if (nkeybits < keybits) {
 				v = v ^ 1;
 				n = &node->child[v];
 			}
@@ -171,7 +171,7 @@ node_find(Critbit *tree, const void *key, int keybits, int bit)
 		if (v == 0 && critbit_isexnode(*n)) {
 			int nkeybits;
 			key_get(&nkeybits, *n);
-			if (nkeybits != keybits)
+			if (nkeybits < keybits)
 				n = &node->child[v ^ 1];
 		}
 	}
@@ -242,8 +242,8 @@ data_critbit(uintptr_t n, const uint8_t *key, int keybits)
 
 	nkey = key_get(&nkeybits, n);
 
-	nlen = nkeybits >> 3;
-	len = keybits >> 3;
+	nlen = (nkeybits + 7) >> 3;
+	len = (keybits + 7) >> 3;
 
 	mlen = (nlen < len) ? nlen : len;
 
@@ -254,16 +254,16 @@ data_critbit(uintptr_t n, const uint8_t *key, int keybits)
 		}
 	}
 
-	if (nlen == len)
+	if (nkeybits == keybits)
 		return -1;
 
-	if (nlen > len) {
-		bit = msb_bit(key[i]);
+	if (nkeybits < keybits) {
+		bit = nkeybits;
 	} else {
-		bit = msb_bit(nkey[i]);
+		bit = keybits;
 	}
 
-	return i << 3 | bit;
+	return bit;
 }
 
 static int

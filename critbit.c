@@ -136,14 +136,6 @@ data_find(Critbit *tree, const void *key, int keybits, CritbitPos *pos)
 		node = critbit_toinnode(*n);
 		v = node_direction(key, keybits, node->bit);
 		n = &node->child[v];
-		if (v == 0 && critbit_isexnode(*n)) {
-			int nkeybits;
-			key_get(&nkeybits, *n);
-			if (nkeybits < keybits) {
-				v = v ^ 1;
-				n = &node->child[v];
-			}
-		}
 	}
 
 	if (pos != NULL) {
@@ -168,12 +160,6 @@ node_find(Critbit *tree, const void *key, int keybits, int bit)
 			break;
 		v = node_direction(key, keybits, node->bit);
 		n = &node->child[v];
-		if (v == 0 && critbit_isexnode(*n)) {
-			int nkeybits;
-			key_get(&nkeybits, *n);
-			if (nkeybits < keybits)
-				n = &node->child[v ^ 1];
-		}
 	}
 
 	return n;
@@ -218,11 +204,18 @@ static int
 node_direction(const void *key, int keybits, int bit)
 {
 	const uint8_t *k = key;
+	int keylen = (keybits + 7) >> 3;
+	int cbit = bit >> 1;
+	int coff = cbit >> 3;
 
-	if (keybits <= bit)
+	if (coff < keylen)
+		if (k[coff] & (0x80 >> (cbit & 0x7)))
+			return 1;
+
+	if (bit & 1)
 		return 0;
 
-	if (k[bit >> 3] & (0x80 >> (bit & 0x7)))
+	if (cbit < keybits)
 		return 1;
 
 	return 0;
@@ -236,34 +229,44 @@ data_critbit(uintptr_t n, const uint8_t *key, int keybits)
 	int nlen;
 	int mlen;
 	int len;
-	int bit;
+	int mod;
 	int i;
 	uint8_t d;
 
 	nkey = key_get(&nkeybits, n);
 
-	nlen = (nkeybits + 7) >> 3;
-	len = (keybits + 7) >> 3;
+	nlen = nkeybits >> 3;
+	len = keybits >> 3;
 
-	mlen = (nlen < len) ? nlen : len;
+	if (nlen < len) {
+		mlen = nlen;
+		mod = nkeybits & 7;
+	} else {
+		mlen = len;
+		mod = keybits & 7;
+	}
 
 	for (i = 0; i < mlen; i++) {
 		d = nkey[i] ^ key[i];
 		if (d != 0) {
-			return i << 3 | msb_bit(d);
+			return ((i << 3 | msb_bit(d)) << 1) | 1;
+		}
+	}
+
+	if (mod > 0) {
+		d = nkey[i] ^ key[i];
+		d &= ~0 << (8 - mod);
+		if (d != 0) {
+			return ((i << 3 | msb_bit(d)) << 1) | 1;
 		}
 	}
 
 	if (nkeybits == keybits)
 		return -1;
-
-	if (nkeybits < keybits) {
-		bit = nkeybits;
-	} else {
-		bit = keybits;
-	}
-
-	return bit;
+	else if (nkeybits < keybits)
+		return nkeybits << 1;
+	else
+		return keybits << 1;
 }
 
 static int

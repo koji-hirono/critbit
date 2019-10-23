@@ -39,6 +39,7 @@ struct Critbit {
 
 extern void critbit_init(Critbit *);
 extern void *critbit_lookup(Critbit *, const void *, int, CritbitPos *);
+extern void *critbit_longest_prefix(Critbit *, const void *, int);
 extern int critbit_insert(Critbit *, const void *, const CritbitPos *);
 extern void critbit_remove(Critbit *, const CritbitPos *);
 

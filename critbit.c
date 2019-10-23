@@ -3,12 +3,14 @@
 
 #include "critbit.h"
 
+static void *longest_prefix(uintptr_t, const uint8_t *, int);
 static uintptr_t *data_find(Critbit *, const void *, int, CritbitPos *);
 static uintptr_t *node_find(Critbit *, const void *, int, int);
 static int node_create(Critbit *, uintptr_t, uintptr_t *, int);
 static void node_destroy(Critbit *, uintptr_t *, int);
 static int node_direction(const void *, int, int);
 static int data_critbit(uintptr_t, const uint8_t *, int);
+static int has_prefix(const uint8_t *, int, const uint8_t *, int);
 static int msb_bit(uint8_t);
 static uint8_t *key_get(int *, uintptr_t);
 static int push(CritbitIt *, uintptr_t);
@@ -43,6 +45,15 @@ critbit_lookup(Critbit *tree, const void *key, int keybits, CritbitPos *pos)
 		return NULL;
 
 	return (void *)*n;
+}
+
+void *
+critbit_longest_prefix(Critbit *tree, const void *key, int keybits)
+{
+	if (critbit_isempty(tree))
+		return NULL;
+
+	return longest_prefix(tree->root, key, keybits);
 }
 
 int
@@ -118,6 +129,32 @@ critbit_next(CritbitIt *it)
 	}
 
 	return (void *)n;
+}
+
+static void *
+longest_prefix(uintptr_t n, const uint8_t *key, int keybits)
+{
+	CritbitNode *node;
+	const uint8_t *prefix;
+	void *tuple;
+	int prefixbits;
+	int v;
+
+	if (critbit_isinnode(n)) {
+		node = critbit_toinnode(n);
+		v = node_direction(key, keybits, node->bit);
+		tuple = longest_prefix(node->child[v], key, keybits);
+		if (tuple != NULL)
+			return tuple;
+		if (v == 1)
+			return longest_prefix(node->child[0], key, keybits);
+	} else {
+		prefix = key_get(&prefixbits, n);
+		if (has_prefix(key, keybits, prefix, prefixbits))
+			return critbit_toexnode(n);
+	}
+
+	return NULL;
 }
 
 static uintptr_t *
@@ -267,6 +304,33 @@ data_critbit(uintptr_t n, const uint8_t *key, int keybits)
 		return nkeybits << 1;
 	else
 		return keybits << 1;
+}
+
+static int
+has_prefix(const uint8_t *s, int sbits, const uint8_t *p, int pbits)
+{
+	uint8_t d;
+	int len;
+	int mod;
+	int i;
+
+	if (sbits < pbits)
+		return 0;
+
+	len = pbits >> 3;
+	for (i = 0; i < len; i++)
+		if (s[i] != p[i])
+			return 0;
+
+	mod = pbits & 7;
+	if (mod > 0) {
+		d = s[i] ^ p[i];
+		d &= ~0 << (8 - mod);
+		if (d != 0)
+			return 0;
+	}
+
+	return 1;
 }
 
 static int

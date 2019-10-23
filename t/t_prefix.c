@@ -107,6 +107,33 @@ test(void)
 
 		assert(memcmp(&t->key, &list[i], sizeof(t->key)) == 0);
 	}
+
+	{
+		const Key keys[] = {
+			{32, {0x0a, 0x01, 0x02, 0x02}},
+			{32, {0x0a, 0x01, 0x02, 0x01}},
+			{32, {0x0a, 0x01, 0x01, 0x03}},
+			{32, {0x0a, 0x02, 0x01, 0x04}},
+		};
+		const int nkeys = sizeof(keys) / sizeof(keys[0]);
+		printf("===> LPM\n");
+		for (i = 0; i < nkeys; i++) {
+			t = critbit_longest_prefix(&tree, keys[i].oct, 32);
+			assert(t != NULL);
+
+			printf("key:");
+			for (j = 0; j < 4; j++) {
+				printf(" %02x", keys[i].oct[j]);
+			}
+			printf("\n");
+			printf("get key:");
+			for (j = 0; j < 4; j++) {
+				printf(" %02x", t->key.oct[j]);
+			}
+			printf("/%d\n", t->key.nbits);
+			printf("get val: %d\n", t->val);
+		}
+	}
 }
 
 int
